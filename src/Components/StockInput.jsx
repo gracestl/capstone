@@ -46,7 +46,7 @@ function StockInput() {
       event.preventDefault();
       if (stockSymbol && purchasePrice && quantity) {
         fetch(
-          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stockSymbol}&apikey=demo`
+          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stockSymbol}&apikey=ZL9W7LIEZX9WETLG`
         )
           .then((response) => response.json())
           .then((data) => {
