@@ -1,60 +1,85 @@
-import { useEffect, useState, useContext } from "react";
+import { useContext, useState, useCallback } from "react";
 import "./StockStyling.css";
 import StockCalculator from "./StockCalculator.jsx";
 import {
   StockSymbolContext,
   PurchasePriceContext,
   QuantityContext,
+  StockListContext,
 } from "./StockContext.jsx";
 
 function StockInput() {
   const { stockSymbol, setStockSymbol } = useContext(StockSymbolContext);
   const { purchasePrice, setPurchasePrice } = useContext(PurchasePriceContext);
   const { quantity, setQuantity } = useContext(QuantityContext);
-  const [showResults, setShowResults] = useState(false);
-  // useState hooks: [current state variable that holds the value, function to update the value] =  initial value of (empty strings)
+  const { stocks, addStock } = useContext(StockListContext);
+  const [error, setError] = useState(null);
 
   const handleStockSymbolChange = (event) => {
-    setShowResults(false);
     let value = event.target.value;
     value = value.toUpperCase();
     value = value.replace(/[^A-Z]/g, "0");
     if (value !== "0" || value === "") {
       setStockSymbol(value);
     }
-  };
-  //event handler triggered by specific event which calls function(setStockSymbol) to update state variable (stockSymbol)
-  // event.target.value: to retrieve the value from the target component that triggered the event.
-  // convert value to uppercase and remove non-alphabetic characters, allow empty string input, replacing other on-alphabetic characters with 0. if 0s are detected, state variable is blocked from changes
+    setError(null); // Clear error on input change
+  }; // Only allow alphabets
 
   const handlePurchasePriceChange = (event) => {
-    setShowResults(false);
     const value = event.target.value;
     if (value !== "00") {
       setPurchasePrice(value);
     }
-  };
-  //event handler triggered by specific event which calls function(setPurchasePrice) to update state variable (purchasePrice)
-  // if statement to only allow input of a single 0 incase user inputs decimal point value e.g. 0.25. Can be bypassed with copy and pasting three 0s though.
+    setError(null); // Clear error on input change
+  }; // Only allow numbers/decimal inputs
 
   const handleQuantityChange = (event) => {
-    setShowResults(false);
     const value = event.target.value;
     if (value === "" || (value !== "0" && !value.includes("."))) {
       setQuantity(value);
     }
-  };
-  //event handler which calls function(setQuantity) to update state variable (quantity)
+    setError(null); // Clear error on input change
+  }; // Only integers
 
-  const handleCalculate = (event) => {
-    event.preventDefault();
-    if (stockSymbol == "" || purchasePrice == "" || quantity == "") {
-      setShowResults(false);
-    } else {
-      setShowResults(true);
-    }
-  };
-  //event handler which calls function(setShowresults) to update it be true. For all other event handlers, if any of them are changed or empty, showResults state is set to false. Only upon clicking the calculate button, it will be true and be displayed.
+  const handleCalculate = useCallback(
+    (event) => {
+      event.preventDefault();
+      if (stockSymbol && purchasePrice && quantity) {
+        fetch(
+          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stockSymbol}&apikey=demo`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            if (data["Global Quote"] && data["Global Quote"]["05. price"]) {
+              const currentPrice = parseFloat(
+                data["Global Quote"]["05. price"]
+              );
+              const newStock = {
+                stockSymbol,
+                quantity: parseFloat(quantity),
+                purchasePrice: parseFloat(purchasePrice),
+                currentPrice,
+                totalValue: currentPrice * parseFloat(quantity),
+                totalPurchasePrice:
+                  parseFloat(purchasePrice) * parseFloat(quantity),
+                profitLoss:
+                  currentPrice * parseFloat(quantity) -
+                  parseFloat(purchasePrice) * parseFloat(quantity),
+              };
+              addStock(newStock);
+              setError(null);
+            } else {
+              setError("The stock you've entered cannot be found.");
+            }
+          })
+          .catch((error) => {
+            setError("We've encountered an error.");
+            console.error(error);
+          });
+      }
+    },
+    [stockSymbol, purchasePrice, quantity, addStock]
+  ); // clicking button checks if all inputs are filled. calculates amount paid for stock and save these details as current stock
 
   return (
     <div>
@@ -69,7 +94,7 @@ function StockInput() {
         />
         <input
           type="number"
-          min="Number.EPSILON"
+          min="0.01"
           name="purchase-price"
           id="purchasePrice"
           placeholder="Purchase Price"
@@ -78,23 +103,25 @@ function StockInput() {
         />
         <input
           type="number"
-          min="2"
+          min="1"
           name="quantity"
           id="quantity"
           placeholder="Quantity"
           value={quantity}
           onChange={handleQuantityChange}
         />
-        <button onClick={handleCalculate}>Calculate</button>
+        <button onClick={handleCalculate}>Add stock</button>
       </div>
       <div className="resultsContainer">
-        {showResults && (
+        {stocks.length > 0 && (
           <div className="resultsContent">
-            <StockCalculator />
+            {/* results contents should not show if there are no inputs and be kept visible as long as 1 stock has been successfully added*/}
+            <StockCalculator error={error} />
           </div>
         )}
       </div>
     </div>
   );
 }
+
 export default StockInput;

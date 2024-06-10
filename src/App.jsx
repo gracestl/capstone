@@ -5,16 +5,14 @@ import React from "react";
 import "./App.css";
 import "./Components/StockStyling.css";
 import StockInput from "./Components/StockInput.jsx";
-import { ContextProvider } from "./Components/StockContext.jsx";
+import { StockProvider } from "./Components/StockContext.jsx"; // Ensure this is correctly imported
 
 function App() {
   return (
-    <>
-      <ContextProvider>
-        <h1>Finance Dashboard</h1>
-        <StockInput />
-      </ContextProvider>
-    </>
+    <StockProvider>
+      <h1>Finance Dashboard</h1>
+      <StockInput />
+    </StockProvider>
   );
 }
 
